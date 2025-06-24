@@ -199,6 +199,7 @@ app.layout = dbc.Container(
             children=dcc.Markdown(
                 r"""
 **Click 'Run Simulation' and give it a couple o' seconds :)**
+This app is bad on mobile. This Textbox is scrollable.
 ### What you’re seeing
 
 **Nodes** represent agents playing an iterated, noisy Prisoner’s Dilemma.  
