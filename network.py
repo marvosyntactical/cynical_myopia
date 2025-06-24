@@ -198,6 +198,7 @@ app.layout = dbc.Container(
             style={"height": "45vh", "overflowY": "auto", "padding": "0.5rem"},
             children=dcc.Markdown(
                 """
+**Click 'Run Simulation' and give it a couple o' seconds :)**
 ### What you’re seeing
 
 **Nodes** represent agents playing an iterated, noisy Prisoner’s Dilemma.  
