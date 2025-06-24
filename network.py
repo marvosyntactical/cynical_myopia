@@ -197,7 +197,7 @@ app.layout = dbc.Container(
             id="doc-pane",
             style={"height": "45vh", "overflowY": "auto", "padding": "0.5rem"},
             children=dcc.Markdown(
-                """
+                r"""
 **Click 'Run Simulation' and give it a couple o' seconds :)**
 ### What you’re seeing
 
@@ -225,6 +225,72 @@ spring layout: strong ties pull nodes closer, brittle ones stretch out.
 * A tight green blob = self‑reinforcing trust island.
 * Sparse red web = cynics unable to milk anyone.
 * If the graph freezes orange, the temptation T still beats the long‑term reward R.
+
+### Model primer
+
+#### 1. Players  
+* \(N\) agents on a graph \(G_t=(V,E_t)\)  
+* Binary strategy label  
+  \[
+    s_i(t)\in\{\text{optimist }(C),\;\text{cynic }(D)\}
+  \]
+
+#### 2. Pay‑off matrix  
+
+\[
+\begin{array}{c|cc}
+ & C & D\\ \hline
+C & (R,R) & (S,T) \\\\
+D & (T,S) & (P,P)
+\end{array}
+\qquad
+T>R>P>S
+\]
+
+#### 3. Single interaction step  
+
+1. Pick random edge \((i,j)\).  
+2. Each plays \(a_i=s_i\) with tremble error \(p_\textrm{flip}\).  
+3. Receive pay‑offs \(\pi_i,\pi_j\) from the matrix.  
+4. **Social learning** with prob \(\lambda\) the lower earner copies the higher earner’s strategy.  
+5. **Re‑wiring** if \(i\!:\!C,\;j\!:\!D\) then  
+   \[
+     \Pr\bigl[(i,j)\text{ cut}\bigr] = \phi
+   \]
+   and \(i\) reconnects to a like‑minded node.  
+6. **Trust update** on edge weight \(\omega_{ij}\):
+
+\[
+\omega_{ij}(t{+}1)=
+\begin{cases}
+\min(1,\;\omega_{ij}+\eta) & a_i=a_j=C\\\\
+\max(\omega_{\min},\;\omega_{ij}-\eta) & a_i\neq a_j
+\end{cases}
+\]
+
+The spring layout uses \(\omega_{ij}\) as its spring constant  
+⇒ thick green ties pull nodes together; thin red ties stretch.
+
+#### 4. Key parameters  
+| Symbol/slider | Meaning |
+|---------------|---------|
+| \(N\) | population size |
+| pct\_opt | initial share of optimists |
+| \(p_\text{edge}\) | initial ER density |
+| \(\phi\) | rewiring probability |
+| \(\lambda\) | imitate probability |
+| \(p_\text{flip}\) | tremble noise |
+| \(R,S,T,P\) | PD pay‑offs |
+
+#### 5. Dynamics in one line  
+
+\[
+\dot s_i = \lambda\;\bigl[\pi_j - \pi_i\bigr]_+\;
+      \;\bigl(s_j - s_i\bigr)
+\]
+
+i.e. a discrete replicator update modulated by network rewiring.
+
 
 ### Exporting as GIF
 Doesn't work yet. Check back soon!
