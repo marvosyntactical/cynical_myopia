@@ -12,11 +12,6 @@ python iterated_pd_network_dash.py   # open http://127.0.0.1:8050
 ```
 """
 from __future__ import annotations
-from PIL import Image
-import imageio.v2 as imageio   # pillow backend
-import kaleido                 # make sure kaleido is installed
-import base64, io
-
 import base64, io, datetime, textwrap
 from dataclasses import dataclass
 from typing import List, Dict
@@ -160,31 +155,18 @@ controls = dbc.Card([
     dbc.Label("Imitate prob"), dcc.Slider(id="imit", min=0, max=1, step=0.05, value=0.5, **_slider_kw),
     dbc.Label("Tremble p"), dcc.Slider(id="trem", min=0, max=0.3, step=0.01, value=0.05, **_slider_kw),
     dbc.Button("Run simulation", id="run", color="primary", className="mt-2"),
-    dbc.Button("Save GIF", id="btn-gif", color="secondary", className="mt-2"),  # ← add me
-  
-
 ], body=True)
 
-app.layout = dbc.Container(
-    [
-        dbc.Row(
-            [
-                dbc.Col(controls, width=3),
-                dbc.Col(
-                    [
-                        dcc.Graph(id="graph", style={"height": "70vh"}),
-                        dcc.Slider(id="slider", min=0, max=0, step=1, value=0),
-                    ],
-                    width=9,
-                ),
-            ]
-        ),
-        dcc.Store(id="frames"),
-        dcc.Download(id="dl-gif"),          # ← must match callback Output
-    ],
-    fluid=True,
-)
-
+app.layout = dbc.Container([
+    dbc.Row([
+        dbc.Col(controls, width=3),
+        dbc.Col([
+            dcc.Graph(id="graph", style={"height": "70vh"}),
+            dcc.Slider(id="slider", min=0, max=0, step=1, value=0),
+        ], width=9),
+    ]),
+    dcc.Store(id="frames"),
+], fluid=True)
 
 # --- helper to build figure
 
@@ -263,33 +245,7 @@ def update_graph(idx, frames):
     idx = max(0, min(idx, len(frames) - 1))
     return frame_to_figure(frames[idx])
 
-# I dont GIF a frick
-
-@app.callback(
-    Output("dl-gif", "data", allow_duplicate=True),   # <─ ID matches the downloader
-    Input("btn-gif", "n_clicks"),                     # <─ ID matches the button
-    State("frames", "data"),
-    prevent_initial_call=True,
-)
-def export_gif(n_clicks, frames):
-    if not n_clicks or not frames:
-        raise dash.exceptions.PreventUpdate
-
-    # Render each stored frame → PNG bytes via kaleido
-    pngs = [frame_to_figure(f).to_image(format="png", scale=2) for f in frames]
-
-    # Assemble GIF with Pillow / imageio
-    pil_frames = [Image.open(io.BytesIO(b)) for b in pngs]
-    buf = io.BytesIO()
-    imageio.mimsave(buf, pil_frames, format="GIF", duration=350)  # 350 ms between frames
-    buf.seek(0)
-
-    # Hand it to Dash Download
-    b64 = base64.b64encode(buf.read()).decode()
-    fname = f"pd_echo_{datetime.datetime.now():%Y%m%d_%H%M%S}.gif"
-    return {"content": b64, "filename": fname, "base64": True}
 
 # ---------------------------------------------------------------------------
-
 if __name__ == "__main__":
     app.run(debug=True)
