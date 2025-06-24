@@ -181,13 +181,59 @@ app.layout = dbc.Container(
         dbc.Row(
             [
                 dbc.Col(controls, width=3),
+                
                 dbc.Col(
-                    [
-                        dcc.Graph(id="graph", style={"height": "70vh"}),
-                        dcc.Slider(id="slider", min=0, max=0, step=1, value=0),
-                    ],
-                    width=9,
-                ),
+    [
+        # ── upper half: network + slider ──────────────────────────
+        html.Div(
+            [
+                dcc.Graph(id="graph", style={"height": "40vh"}),
+                dcc.Slider(id="slider", min=0, max=0, step=1, value=0),
+            ]
+        ),
+
+        # ── lower half: markdown doc pane ─────────────────────────
+        html.Div(
+            id="doc-pane",
+            style={"height": "45vh", "overflowY": "auto", "padding": "0.5rem"},
+            children=dcc.Markdown(
+                """
+### What you’re seeing
+
+**Nodes** represent agents playing an iterated, noisy Prisoner’s Dilemma.  
+Node colour is a gradient; red = pure cynic (always *D*), green = pure optimist
+(always *C*).
+
+**Edges** have a *trust weight* ω (thicker = stronger).  
+ω grows when both endpoints cooperate, shrinks on betrayal, and drives the
+spring layout: strong ties pull nodes closer, brittle ones stretch out.
+
+### Parameter cheat‑sheet
+| Slider | Meaning | Typical effect |
+|--------|---------|----------------|
+| Agents (N) | population size | bigger slows dynamics |
+| % Optimists | initial green share | raises co‑op seed |
+| Edge prob | initial density | dense ⇢ early exploitation |
+| Steps | run length | just more frames |
+| Frame Δ | store every Δ steps | x-axis granularity |
+| Rewire φ | chance C cuts link to D | high φ lets greens self‑segregate |
+| Imitate prob | social learning rate | high spreads whichever wins |
+| Tremble p | move‑flip noise | noise hurts defectors |
+
+### Reading the plot
+* A tight green blob = self‑reinforcing trust island.
+* Sparse red web = cynics unable to milk anyone.
+* If the graph freezes orange, the temptation T still beats the long‑term reward R.
+
+### Exporting as GIF
+Doesn't work yet. Check back soon!
+"""
+            ),
+        ),
+    ],
+    width=9,
+),
+
             ]
         ),
         dcc.Store(id="frames"),
