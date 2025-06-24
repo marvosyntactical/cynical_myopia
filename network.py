@@ -47,13 +47,13 @@ class Params:
     tremble_p    – probability an intended move flips (execution noise).
     R,S,T,P      – classical Prisoner’s‑Dilemma pay‑offs.
     """
-    n: int = 50
+    n: int = 100
     pct_opt: float = 0.5
     p_edge: float = 0.1
     steps: int = 1500
     frame_delta: int = 100
     rew_phi: float = 0.8
-    imitate_prob: float = 0.5
+    imitate_prob: float = 0.05
     tremble_p: float = 0.05
     R: int = 3
     S: int = 0
@@ -162,14 +162,14 @@ _slider_kw = dict(tooltip={"placement": "bottom", "always_visible": False})
 controls = dbc.Card([
     html.H5("Controls"),
     dbc.Label("Agents (N)"),
-    dcc.Input(id="n", type="number", value=50, min=10, max=200, step=10, style={"width": "100%"}),
-    dbc.Label("% Optimists"), dcc.Slider(id="pct", min=0, max=1, step=0.05, value=0.5, **_slider_kw),
-    dbc.Label("Edge prob"), dcc.Slider(id="p_edge", min=0.02, max=0.3, step=0.01, value=0.1, **_slider_kw),
+    dcc.Input(id="n", type="number", value=100, min=10, max=200, step=10, style={"width": "100%"}),
+    dbc.Label("% Init Optimists"), dcc.Slider(id="pct", min=0, max=1, step=0.05, value=0.5, **_slider_kw),
+    dbc.Label("Edge prob"), dcc.Slider(id="p_edge", min=0.05, max=0.3, step=0.05, value=0.1, **_slider_kw),
     dbc.Label("Steps"), dcc.Input(id="steps", type="number", value=1500, min=100, max=10000, step=100, style={"width": "100%"}),
-    dbc.Label("Frame Δ"), dcc.Input(id="frame_delta", type="number", value=100, min=10, max=500, step=10, style={"width": "100%"}),
-    dbc.Label("Rewire φ"), dcc.Slider(id="phi", min=0, max=1, step=0.05, value=0.8, **_slider_kw),
-    dbc.Label("Imitate prob"), dcc.Slider(id="imit", min=0, max=1, step=0.05, value=0.5, **_slider_kw),
-    dbc.Label("Tremble p"), dcc.Slider(id="trem", min=0, max=0.3, step=0.01, value=0.05, **_slider_kw),
+    dbc.Label("Frame Delta"), dcc.Input(id="frame_delta", type="number", value=10, min=10, max=500, step=10, style={"width": "100%"}),
+    dbc.Label("Rewire φ"), dcc.Slider(id="phi", min=0, max=1, step=0.1, value=0.8, **_slider_kw),
+    dbc.Label("Imitate prob"), dcc.Slider(id="imit", min=0, max=1, step=0.05, value=0.05, **_slider_kw),
+    dbc.Label("Tremble p"), dcc.Slider(id="trem", min=0, max=0.3, step=0.05, value=0.05, **_slider_kw),
     dbc.Button("Run simulation", id="run", color="primary", className="mt-2"),
     dbc.Button("Save GIF", id="btn-gif", color="secondary", className="mt-2"),  # ← add me
   
