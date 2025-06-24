@@ -27,6 +27,9 @@ import plotly.graph_objects as go
 import networkx as nx
 import numpy as np
 
+
+DEBUG = 0 # 0 for fly, 1 for local
+
 # ░░ Simulation core ░░
 @dataclass
 class Params:
@@ -87,7 +90,14 @@ def run_sim(prm: Params) -> List[Dict]:
     frames: List[Dict] = []
 
     def snapshot(step: int):
-        nodes = [{"x": float(pos[v][0]), "y": float(pos[v][1]), "c": "#1f77b4" if types[v] == "optimist" else "#ff7f0e"} for v in G.nodes()]
+        nodes = [
+            {
+                "x": float(pos[v][0]),
+                "y": float(pos[v][1]),
+                "v": 1.0 if types[v] == "optimist" else 0.0,   # numeric flag
+            }
+            for v in G
+        ]
         edges = [{"x0": float(pos[u][0]), "y0": float(pos[u][1]), "x1": float(pos[v][0]), "y1": float(pos[v][1]), "w": G[u][v]["weight"]} for u, v in G.edges()]
         frames.append({"step": step, "nodes": nodes, "edges": edges})
 
@@ -205,11 +215,19 @@ def frame_to_figure(frame: Dict) -> go.Figure:
         line=dict(width=1.2, color="#9e9e9e"),
         hoverinfo="skip",
     )
+    vals = [n["v"] for n in frame["nodes"]]       # 0 → red, 1 → green
+
     node_trace = go.Scatter(
         x=[n["x"] for n in frame["nodes"]],
         y=[n["y"] for n in frame["nodes"]],
         mode="markers",
-        marker=dict(color=[n["c"] for n in frame["nodes"]], size=11, line=dict(width=0)),
+        marker=dict(
+            color=vals,
+            colorscale=[[0.0, "red"], [1.0, "green"]],
+            cmin=0, cmax=1,
+            size=11,
+            colorbar=dict(title="optimism"),
+        ),
         hoverinfo="skip",
     )
     fig = go.Figure([edge_trace, node_trace])
@@ -292,4 +310,10 @@ def export_gif(n_clicks, frames):
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    if DEBUG:
+        # local
+        app.run(debug=True)
+    else:
+        # fly
+        port = int(os.environ.get("PORT", 8050))
+        app.run_server(host="0.0.0.0", port=port, debug=False)
