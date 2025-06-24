@@ -214,6 +214,10 @@ Node colour is a gradient; red = pure cynic (always *D*), green = pure o
 ω grows when both endpoints cooperate, shrinks on betrayal, and drives the
 spring layout: strong ties pull nodes closer, brittle ones stretch out.
 
+This app is called pd-**echo** because with the current model,
+you see two echo chambers forming. I'm soon gonna allow for Tit-For-Tat,
+then, everyone should turn green :)
+
 ### Parameter cheat‑sheet
 | Slider | Meaning | Typical effect |
 |--------|---------|----------------|
