@@ -20,6 +20,7 @@ import base64, io
 import base64, io, datetime, textwrap
 from dataclasses import dataclass
 from typing import List, Dict
+import os
 
 import dash, dash_bootstrap_components as dbc
 from dash import dcc, html, Input, Output, State
@@ -316,4 +317,4 @@ if __name__ == "__main__":
     else:
         # fly
         port = int(os.environ.get("PORT", 8050))
-        app.run_server(host="0.0.0.0", port=port, debug=False)
+        app.run(host="0.0.0.0", port=port, debug=False)
