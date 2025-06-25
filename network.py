@@ -29,7 +29,7 @@ import networkx as nx
 import numpy as np
 
 
-DEBUG = 0 # 0 for fly, 1 for local
+DEBUG = 1 # 0 for fly, 1 for local
 
 # ░░ Simulation core ░░
 @dataclass
@@ -53,12 +53,19 @@ class Params:
     steps: int = 1500
     frame_delta: int = 100
     rew_phi: float = 0.8
-    imitate_prob: float = 0.05
     tremble_p: float = 0.05
     R: int = 3
     S: int = 0
     T: int = 5
     P: int = 1
+
+    imitate_prob: float = 0.05
+
+    # Below: Imitation Implementations
+
+    # 1. REPUTATION (EMA)
+    rep_alpha: float = 0.001
+
 
 _action = {"cynic": "D", "optimist": "C"}
 
@@ -89,6 +96,9 @@ def run_sim(prm: Params) -> List[Dict]:
     tot_pay = np.zeros(prm.n)
     tot_cnt = np.zeros(prm.n)
     frames: List[Dict] = []
+
+    # REPUTATION ARRAY
+    rep = np.full(prm.n, 0.0)
 
     def snapshot(step: int):
         nodes = [
@@ -136,14 +146,43 @@ def run_sim(prm: Params) -> List[Dict]:
         tot_pay[j] += p_j
         tot_cnt[i] += 1
         tot_cnt[j] += 1
+        # REPUTATION
+        rep[i] = (1 - prm.rep_alpha) * rep[i] + prm.rep_alpha * p_i
+        rep[j] = (1 - prm.rep_alpha) * rep[j] + prm.rep_alpha * p_j
 
-        # imitation
-        if rng.random() < prm.imitate_prob and tot_cnt[i] and tot_cnt[j]:
-            avg_i, avg_j = tot_pay[i] / tot_cnt[i], tot_pay[j] / tot_cnt[j]
-            if avg_i < avg_j:
+        # ======== IMITATION ========
+
+        # 0. Naive Implementation
+
+        # if rng.random() < prm.imitate_prob and tot_cnt[i] and tot_cnt[j]:
+        #     avg_i, avg_j = tot_pay[i] / tot_cnt[i], tot_pay[j] / tot_cnt[j]
+        #     if avg_i < avg_j:
+        #         types[i] = types[j]
+        #     elif avg_j < avg_i:
+        #         types[j] = types[i]
+
+        # 1. REPUTATION (EMA)
+
+        #if rng.random() < prm.imitate_prob:
+        #    if rep[i] < rep[j]:
+        #        types[i] = types[j]
+        #    elif rep[j] < rep[i]:
+        #        types[j] = types[i]
+
+        # 2. REPUTATION (POP)
+        deg_i, deg_j = len(G[i]), len(G[j])
+        avg_i = tot_pay[i] / tot_cnt[i] if tot_cnt[i] else 0
+        avg_j = tot_pay[j] / tot_cnt[j] if tot_cnt[j] else 0
+
+        score_i = deg_i * avg_i
+        score_j = deg_j * avg_j
+        total = score_i + score_j
+        if total > 0 and rng.random() < prm.imitate_prob:
+            if rng.random() < score_j / total:
                 types[i] = types[j]
-            elif avg_j < avg_i:
+            else:
                 types[j] = types[i]
+
 
         maybe_rewire(i, j, a_i, a_j)
         maybe_rewire(j, i, a_j, a_i)
@@ -156,6 +195,7 @@ def run_sim(prm: Params) -> List[Dict]:
 
 # ░░ Dash app ░░
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.FLATLY])
+app.title = "Echo Chambers"
 server = app.server
 
 _slider_kw = dict(tooltip={"placement": "bottom", "always_visible": False})
@@ -215,7 +255,9 @@ Node colour is a gradient; red = pure cynic (always *D*), green = pure o
 spring layout: strong ties pull nodes closer, brittle ones stretch out.
 
 This app is called pd-**echo** because with the current model,
-you see two echo chambers forming. I'm soon gonna allow for Tit-For-Tat,
+you see two echo chambers forming.
+
+I'm soon gonna allow for Tit-For-Tat,
 then, everyone should turn green :)
 
 ### Parameter cheat‑sheet
