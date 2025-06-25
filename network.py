@@ -29,7 +29,7 @@ import networkx as nx
 import numpy as np
 
 
-DEBUG = 1 # 0 for fly, 1 for local
+DEBUG = 0 # 0 for fly, 1 for local
 
 # ░░ Simulation core ░░
 @dataclass
