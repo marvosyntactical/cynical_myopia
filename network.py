@@ -82,7 +82,21 @@ def _pd(a: str, b: str, p: Params):
 
 def run_sim(prm: Params) -> List[Dict]:
     rng = np.random.default_rng(0)
-    types = np.array(["optimist"] * int(prm.n * prm.pct_opt) + ["cynic"] * (prm.n - int(prm.n * prm.pct_opt)))
+    # OLD BERNOULLI INIT
+    # types = np.array(["optimist"] * int(prm.n * prm.pct_opt) + ["cynic"] * (prm.n - int(prm.n * prm.pct_opt)))
+
+    # BAYESIAN INIT
+
+    # belief that partner Defects  → p_i, so 0 = pure optimist, 1 = pure cynic
+    alpha = np.full(prm.n, 2.0) # prior coop counts (β)
+    beta  = np.full(prm.n, 2.0) # prior defect counts (α)
+
+    # initialise with pct_opt share leaning optimistic
+    rnd = rng.random(prm.n)
+    alpha[rnd < prm.pct_opt] = 5.0 # more weight on cooperation
+    beta[rnd < prm.pct_opt]  = 1.0 # pessimists keep α>β
+
+    belief = beta / (alpha + beta) # E[p(defect)]
 
     G = nx.erdos_renyi_graph(prm.n, prm.p_edge, seed=42)
     if not nx.is_connected(G):
@@ -101,14 +115,13 @@ def run_sim(prm: Params) -> List[Dict]:
     rep = np.full(prm.n, 0.0)
 
     def snapshot(step: int):
-        nodes = [
-            {
+        nodes = [{
                 "x": float(pos[v][0]),
                 "y": float(pos[v][1]),
-                "v": 1.0 if types[v] == "optimist" else 0.0,   # numeric flag
-            }
-            for v in G
+                "val": float(belief[v]),          # store value 0..1
+            } for v in G
         ]
+
         edges = [{"x0": float(pos[u][0]), "y0": float(pos[u][1]), "x1": float(pos[v][0]), "y1": float(pos[v][1]), "w": G[u][v]["weight"]} for u, v in G.edges()]
         frames.append({"step": step, "nodes": nodes, "edges": edges})
 
@@ -117,7 +130,9 @@ def run_sim(prm: Params) -> List[Dict]:
     def maybe_rewire(u, v, au, av):
         if au == "C" and av == "D" and rng.random() < prm.rew_phi and G.has_edge(u, v):
             G.remove_edge(u, v)
-            cands = [k for k in range(prm.n) if types[k] == types[u] and k != u and not G.has_edge(u, k)]
+            # cands = [k for k in range(prm.n) if types[k] == types[u] and k != u and not G.has_edge(u, k)]
+            same_side = lambda k: (belief[k] < 0.5) == (belief[u] < 0.5)
+            cands = [k for k in range(prm.n) if same_side(k) and k != u and not G.has_edge(u, k)]
             if cands:
                 G.add_edge(u, rng.choice(cands), weight=1.0)
 
@@ -127,11 +142,39 @@ def run_sim(prm: Params) -> List[Dict]:
         if not nbrs:
             continue
         j = rng.choice(nbrs)
-        a_i, a_j = _action[types[i]], _action[types[j]]
+
+        # OLD DETERMINISTIC CATEGORICAL STRATEGIES
+        # a_i, a_j = _action[types[i]], _action[types[j]]
+
+        # if rng.random() < prm.tremble_p:
+        #     a_i = "D" if a_i == "C" else "C"
+        # if rng.random() < prm.tremble_p:
+        #     a_j = "D" if a_j == "C" else "C"
+
+        a_i = "D" if rng.random() < belief[i] else "C"
+        a_j = "D" if rng.random() < belief[j] else "C"
+
         if rng.random() < prm.tremble_p:
             a_i = "D" if a_i == "C" else "C"
         if rng.random() < prm.tremble_p:
             a_j = "D" if a_j == "C" else "C"
+
+        # BAYESIAN BELIEF UPDATES
+        # update i's Beta prior based on what i just SAW from j
+        if a_j == "C":
+            alpha[i] += 1
+        else:
+            beta[i] += 1
+
+        # symmetric for j
+        if a_i == "C":
+            alpha[j] += 1
+        else:
+            beta[j] += 1
+
+        # recompute beliefs
+        belief[i] = beta[i] / (alpha[i] + beta[i])
+        belief[j] = beta[j] / (alpha[j] + beta[j])
 
         # trust weight update
         if a_i == a_j == "C":
@@ -163,7 +206,7 @@ def run_sim(prm: Params) -> List[Dict]:
 
         # 1. REPUTATION (EMA)
 
-        #if rng.random() < prm.imitate_prob:
+        # if rng.random() < prm.imitate_prob:
         #    if rep[i] < rep[j]:
         #        types[i] = types[j]
         #    elif rep[j] < rep[i]:
@@ -179,9 +222,9 @@ def run_sim(prm: Params) -> List[Dict]:
         total = score_i + score_j
         if total > 0 and rng.random() < prm.imitate_prob:
             if rng.random() < score_j / total:
-                types[i] = types[j]
+                belief[i] = belief[j]
             else:
-                types[j] = types[i]
+                belief[j] = belief[i]
 
 
         maybe_rewire(i, j, a_i, a_j)
@@ -386,20 +429,34 @@ def frame_to_figure(frame: Dict) -> go.Figure:
         line=dict(width=1.2, color="#9e9e9e"),
         hoverinfo="skip",
     )
-    vals = [n["v"] for n in frame["nodes"]]       # 0 → red, 1 → green
+    # vals = [n["v"] for n in frame["nodes"]]       # 0 → red, 1 → green
+    vals = [n["val"] for n in frame["nodes"]]
 
+    # node_trace = go.Scatter(
+    #     x=[n["x"] for n in frame["nodes"]],
+    #     y=[n["y"] for n in frame["nodes"]],
+    #     mode="markers",
+    #     marker=dict(
+    #         color=vals,
+    #         colorscale=[[0.0, "red"], [1.0, "green"]],
+    #         cmin=0, cmax=1,
+    #         size=11,
+    #         colorbar=dict(title="optimism"),
+    #     ),
+    #     hoverinfo="skip",
+    # )
     node_trace = go.Scatter(
         x=[n["x"] for n in frame["nodes"]],
         y=[n["y"] for n in frame["nodes"]],
         mode="markers",
+        hoverinfo="skip",
         marker=dict(
             color=vals,
-            colorscale=[[0.0, "red"], [1.0, "green"]],
             cmin=0, cmax=1,
+            colorscale=[[0, "green"], [1, "red"]],
             size=11,
-            colorbar=dict(title="optimism"),
+            colorbar=dict(title="p(defect)"),
         ),
-        hoverinfo="skip",
     )
     fig = go.Figure([edge_trace, node_trace])
     fig.update_layout(
